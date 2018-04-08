@@ -51,6 +51,8 @@ const int spiClockPin = 13;
 #define WRITE_TRIGGER_THRESHOLD 0x68
 #define WRITE_FILTER_RATIO 0x69
 
+#define FILTER_RATIO_DIVIDER 10000.0f
+
 struct {
 	uint16_t volatile vtxFreq = 5800;
 	// Subtracted from the peak rssi during a calibration pass to determine the trigger value
@@ -127,7 +129,7 @@ void setup() {
     cbi(ADCSRA,ADPS0);
 
 	// Initialize lastPass defaults
-	settings.filterRatioFloat = settings.filterRatio / 1000.0f;
+	settings.filterRatioFloat = settings.filterRatio / FILTER_RATIO_DIVIDER;
 	state.rssi = 0;
 	state.rssiTrigger = 0;
 	lastPass.rssiPeakRaw = 0;
@@ -451,7 +453,7 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 		case WRITE_FILTER_RATIO:
 			if (readAndValidateIoBuffer(WRITE_FILTER_RATIO, 1)) {
 				settings.filterRatio = ioBufferRead8();
-				settings.filterRatioFloat =  settings.filterRatio / 1000.0f;
+				settings.filterRatioFloat =  settings.filterRatio / FILTER_RATIO_DIVIDER;
 				success = true;
 			}
 			break;

@@ -28,6 +28,8 @@ UPDATE_SLEEP = 0.1 # Main update loop delay
 I2C_CHILL_TIME = 0.075 # Delay after i2c read/write
 I2C_RETRY_COUNT = 5 # Limit of i2c retries
 
+FREQ_ADJLIMIT_MHZ = 5645 # Below this freq do RSSI offset adj
+
 def unpack_8(data):
     return data[0]
 
@@ -263,7 +265,7 @@ class Delta5Interface(BaseHardwareInterface):
     def set_frequency(self, node_index, frequency):
         node = self.nodes[node_index]
         upd_flg = False
-        if node.node_offs_adj != 0:
+        if node.node_offs_adj != 0 or frequency < FREQ_ADJLIMIT_MHZ or node.frequency < FREQ_ADJLIMIT_MHZ:
             upd_flg = True
         node.frequency = self.set_and_validate_value_16(node,
             WRITE_FREQUENCY,
@@ -307,6 +309,12 @@ class Delta5Interface(BaseHardwareInterface):
         if node.node_offs_adj != 0:
             offset = offset + node.node_offs_adj
             self.log('DEBUG N{0} freq={1}, OffsAdj={2}, offs={3}'.format(node_index+1, node.frequency, node.node_offs_adj, offset))
+        if node.frequency > 0 and node.frequency < FREQ_ADJLIMIT_MHZ:
+            adj_val = (FREQ_ADJLIMIT_MHZ - node.frequency) / 10
+            if adj_val > 40:
+                adj_val = 40
+            offset = offset + adj_val
+            self.log('DEBUG N{0} freq={1}, adjVal={2}, offs={3}'.format(node_index+1, node.frequency, adj_val, offset))
         node.calibration_offset = self.set_and_validate_value_16(node,
             WRITE_CALIBRATION_OFFSET,
             READ_CALIBRATION_OFFSET,

@@ -97,6 +97,12 @@
 			$('.set_profile_name').val( msg.profile_name);
 			$('.set_profile_description').val( msg.profile_description);
 
+		socket.on('node_offs_adj_vals', function (msg) {
+			for (i = 0; i < msg.node_offs_adj.length; i++) {
+				$('.node_offs_adj_' + i).val(msg.node_offs_adj[i]);
+			}
+		});
+
 		});
 
 		socket.on('set_fix_race_time', function (msg) {
@@ -135,6 +141,14 @@
 				frequency: parseInt($(this).data('frequency'))
 			};
 			socket.emit('set_frequency', data);
+		})
+
+		$('.chg_node_offs_adj').change(function (event) {
+			var data = {
+				node_index: parseInt($(this).data('node_index')),
+				node_offs_adj: parseInt($(this).val())
+			};
+			socket.emit('chg_node_offs_adj', data);
 		})
 
 		$('.set_language li a').click(function (event) {
@@ -405,6 +419,12 @@
 					<td>Peak</td>
 					<td>
 						<span class="peak_rssi_{{ node }}"></span>
+					</td>
+				</tr>
+				<tr>
+					<td>OffsAdj</td>
+					<td>
+						<input type="text" class="form-control chg_node_offs_adj node_offs_adj_{{ node }}" data-node_index="{{ node }}">
 					</td>
 				</tr>
 			</table>

@@ -254,6 +254,7 @@ def connect_handler():
         server_log('Heartbeat thread started')
     emit_node_data() # Settings page, node channel and triggers
     emit_node_tuning() # Settings page, node tuning values
+    emit_node_offs_adj_vals() # Settings page, per-node OffsAdj values
     emit_race_status() # Race page, to set race button states
     emit_current_laps() # Race page, load and current laps
     emit_leaderboard() # Race page, load leaderboard for current laps
@@ -273,6 +274,14 @@ def on_set_frequency(data):
     INTERFACE.set_frequency(node_index, frequency)
     server_log('Frequency set: Node {0} Frequency {1}'.format(node_index+1, frequency))
     emit_node_data() # Settings page, new node channel
+
+@SOCKET_IO.on('chg_node_offs_adj')
+def on_chg_node_offs_adj(data):
+    '''Change node calibration-offset-adjustment value.'''
+    node_index = data['node_index']
+    node_offs_adj = data['node_offs_adj']
+    INTERFACE.chg_node_offs_adj(node_index, node_offs_adj)
+    server_log('Node change_offs_adj: Node {0} OffsAdj {1}'.format(node_index+1, node_offs_adj))
 
 @SOCKET_IO.on('set_language')
 def on_set_language(data):
@@ -675,6 +684,13 @@ def emit_node_tuning():
             tune_val.description
     })
 
+def emit_node_offs_adj_vals():
+    '''Emits per-node calibration-offset-adjustment values.'''
+#    last_profile = LastProfile.query.get(1)
+#    tune_val = Profiles.query.get(last_profile.profile_id)
+    SOCKET_IO.emit('node_offs_adj_vals', {
+        'node_offs_adj': [node.node_offs_adj for node in INTERFACE.nodes]
+    })
 
 def emit_current_laps():
     '''Emits current laps.'''

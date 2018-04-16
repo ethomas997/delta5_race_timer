@@ -3,60 +3,57 @@
 	function voice_label(idlang) {
 		switch (idlang) {
 		case 1:
-			$('.sel_lang').html("David - English (United States) en-US");
-			break;
-		case 2:
-			$('.sel_lang').html("Zira - English (United States) en-US");
-			break;
-		case 3:
 			$('.sel_lang').html("US English en-US");
 			break;		
-		case 4:
+		case 2:
+			$('.sel_lang').html("Anna - English (United States) en-US");
+			break;
+		case 3:
 			$('.sel_lang').html("UK English Female en-GB");
 			break;		
-		case 5:
+		case 4:
 			$('.sel_lang').html("UK English Male en-GB");
 			break;		
-		case 6:
+		case 5:
 			$('.sel_lang').html("Deutsch de-DE");
 			break;		
-		case 7:
+		case 6:
 			$('.sel_lang').html("español es-ES");
 			break;		
-		case 8:
+		case 7:
 			$('.sel_lang').html("español de Estados Unidos es-US");
 			break;		
-		case 9:
+		case 8:
 			$('.sel_lang').html("français fr-FR");
 			break;		
-		case 10:
+		case 9:
 			$('.sel_lang').html("हिन्दी hi-IN");
 			break;		
-		case 11:
+		case 10:
 			$('.sel_lang').html("Bahasa Indonesia id-ID");
 			break;		
-		case 12:
+		case 11:
 			$('.sel_lang').html("italiano it-IT");
 			break;		
-		case 13:
+		case 12:
 			$('.sel_lang').html("日本語 ja-JP");
 			break;		
-		case 14:
+		case 13:
 			$('.sel_lang').html("한국의 ko-KR");
 			break;		
-		case 15:
+		case 14:
 			$('.sel_lang').html("Nederlands nl-NL");
 			break;		
-		case 16:
+		case 15:
 			$('.sel_lang').html("polski pl-PL");
 			break;		
-		case 17:
+		case 16:
 			$('.sel_lang').html("português do Brasil pt-BR");
 			break;		
-		case 18:
+		case 17:
 			$('.sel_lang').html("русский ru-RU");
 			break;		
-		case 19:
+		case 18:
 			$('.sel_lang').html("國語（臺灣） zh-TW");
 			break;		
 		default:
@@ -94,6 +91,7 @@
 			$('.set_calibration_offset').val( msg.calibration_offset);
 			$('.set_trigger_threshold').val( msg.trigger_threshold);
 			$('.set_filter_ratio').val( msg.filter_ratio);
+			$('.set_lap_min_time').val( msg.lap_min_time);
 			$('.set_profile_name').val( msg.profile_name);
 			$('.set_profile_description').val( msg.profile_description);
 
@@ -128,11 +126,15 @@
 			var $langid = msg.language;
 			sellang = $langid;
 			voice_label($langid);
+			setSpeakRateVal(msg.speak_rate);
+			setSpeakPitchVal(msg.speak_pitch);
+			$('.set_speak_rate').val( msg.speak_rate);
+			$('.set_speak_pitch').val( msg.speak_pitch);
 		});
 
 		socket.on('speak_phonetic_text', function (msg) {
 			var $ttstext = msg.text;
-			speak('<div class="speech">' + $ttstext + '</div> div.speech');				
+			doSpeak('<div class="speech">' + $ttstext + '</div> div.speech');				
 		})
 		
 		$('.set_frequency li a').click(function (event) {
@@ -219,6 +221,13 @@
 			socket.emit('set_filter_ratio', data);
 		})
 
+		$('.set_lap_min_time').change(function (event) {
+			var data = {
+				lap_min_time: parseInt($(this).val())
+			};
+			socket.emit('set_lap_min_time', data);
+		})
+
 		$('.set_profile_name').change(function (event) {
 			var data = {
 				profile_name: $(this).val()
@@ -302,78 +311,21 @@
 			socket.emit('set_fix_race_time', data);
 		})
 
+		$('.set_speak_rate').change(function (event) {
+			var data = {
+				speak_rate: parseInt($(this).val())
+			};
+			socket.emit('set_speak_rate', data);
+		})
+
+		$('.set_speak_pitch').change(function (event) {
+			var data = {
+				speak_pitch: parseInt($(this).val())
+			};
+			socket.emit('set_speak_pitch', data);
+		})
+
 	});
-
-	var sellang = {{ lang_id }};
-
-	function speak(obj) {
-		switch (sellang) {
-			case 1:
-				$(obj).articulate('setVoice','name','Microsoft David Desktop - English (United States)').articulate('speak');
-				break;
-			case 2:
-				$(obj).articulate('setVoice','name','Microsoft Zira Desktop - English (United States)').articulate('speak');
-				break;
-			case 3:
-				$(obj).articulate('setVoice','name','Google US English').articulate('speak');
-				break;
-			case 4:
-				$(obj).articulate('setVoice','name','Google UK English Female').articulate('speak');
-				break;
-			case 5:
-				$(obj).articulate('setVoice','name','Google UK English Male').articulate('speak');
-				break;
-			case 6:
-				$(obj).articulate('setVoice','name','Google Deutsch').articulate('speak');
-				break;			
-			case 7:
-				$(obj).articulate('setVoice','name','Google español').articulate('speak');
-				break;
-			case 8:
-				$(obj).articulate('setVoice','name','Google español de Estados Unidos').articulate('speak');
-				break;
-			case 9:
-				$(obj).articulate('setVoice','name','Google français').articulate('speak');
-				break;
-			case 10:
-				$(obj).articulate('setVoice','name','Google हिन्दी').articulate('speak');
-				break;
-			case 11:
-				$(obj).articulate('setVoice','name','Google Bahasa Indonesia').articulate('speak');
-				break;
-			case 12:
-				$(obj).articulate('setVoice','name','Google italiano').articulate('speak');
-				break;
-			case 13:
-				$(obj).articulate('setVoice','name','Google 日本語').articulate('speak');
-				break;
-			case 14:
-				$(obj).articulate('setVoice','name','Google 한국의').articulate('speak');
-				break;
-			case 15:
-				$(obj).articulate('setVoice','name','Google Nederlands').articulate('speak');
-				break;
-			case 16:
-				$(obj).articulate('setVoice','name','Google polski').articulate('speak');
-				break;
-			case 17:
-				$(obj).articulate('setVoice','name','Google português do Brasil').articulate('speak');
-				break;
-			case 18:
-				$(obj).articulate('setVoice','name','Google русский').articulate('speak');
-				break;
-			case 19:
-				$(obj).articulate('setVoice','name','Google 國語（臺灣）').articulate('speak');
-				break;
-		}
-	};
-
-	function ratenormal(obj) {
-		$(obj).articulate('rate', 1.0);
-	};
-	function ratefast(obj) {
-		$(obj).articulate('rate', 3.0);
-	};
 
 </script>
 {% endblock %} {% block content %}
@@ -521,37 +473,64 @@
 </div>
 
 <!--Display Voice-->
-<h4>Voice Selection</h4>
+<h4>Voice Settings</h4>
 <div class="row">
-	<div class='col-xs-8 col-sm-4 col-md-2'>
-						<div class="btn-group">
-							<button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true"
-							 aria-expanded="true"><span class="sel_lang"></span></button>
-							<ul class="dropdown-menu set_language">
-								<li><a role="button" data-language="0">None</a></li>
-								<li><a role="button" data-language="1">David - English (United States en-US</a></li>
-								<li><a role="button" data-language="2">Zira - English (United States) en-US</a></li>
-								<li><a role="button" data-language="3">US English en-US</a></li>
-								<li><a role="button" data-language="4">UK English Female en-GB</a></li>
-								<li><a role="button" data-language="5">UK English Male en-GB</a></li>
-								<li><a role="button" data-language="6">Deutsch de-DE</a></li>
-								<li><a role="button" data-language="7">español es-ES</a></li>
-								<li><a role="button" data-language="8">español de Estados Unidos es-US</a></li>
-								<li><a role="button" data-language="9">français fr-FR</a></li>
-								<li><a role="button" data-language="10">हिन्दी hi-IN</a></li>
-								<li><a role="button" data-language="11">Bahasa Indonesia id-ID</a></li>
-								<li><a role="button" data-language="12">italiano it-IT</a></li>
-								<li><a role="button" data-language="13">日本語 ja-JP</a></li>
-								<li><a role="button" data-language="14">한국의 ko-KR</a></li>
-								<li><a role="button" data-language="15">Nederlands nl-NL</a></li>
-								<li><a role="button" data-language="16">polski pl-PL</a></li>
-								<li><a role="button" data-language="17">português do Brasil pt-BR</a></li>
-								<li><a role="button" data-language="18">русский ru-RU</a></li>
-								<li><a role="button" data-language="19">國語（臺灣） zh-TW</a></li>
-							</ul>
-						</div>
+	<div class='col-xs-16 col-md-8'>
+		<div class='panel panel-default'>
+			<table class="table">
+
+				<tr>
+					<div class='col-xs-8 col-sm-4 col-md-2'>
+						<td><b>Voice</b></td>
+						<td>
+							<div class="btn-group">
+								<button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true"
+								 aria-expanded="true"><span class="sel_lang"></span></button>
+								<ul class="dropdown-menu set_language">
+									<li><a role="button" data-language="0">None</a></li>
+									<li><a role="button" data-language="1">US English en-US</a></li>
+									<li><a role="button" data-language="2">Anna - English (United States) en-US</a></li>
+									<li><a role="button" data-language="3">UK English Female en-GB</a></li>
+									<li><a role="button" data-language="4">UK English Male en-GB</a></li>
+									<li><a role="button" data-language="5">Deutsch de-DE</a></li>
+									<li><a role="button" data-language="6">español es-ES</a></li>
+									<li><a role="button" data-language="7">español de Estados Unidos es-US</a></li>
+									<li><a role="button" data-language="8">français fr-FR</a></li>
+									<li><a role="button" data-language="9">हिन्दी hi-IN</a></li>
+									<li><a role="button" data-language="10">Bahasa Indonesia id-ID</a></li>
+									<li><a role="button" data-language="11">italiano it-IT</a></li>
+									<li><a role="button" data-language="12">日本語 ja-JP</a></li>
+									<li><a role="button" data-language="13">한국의 ko-KR</a></li>
+									<li><a role="button" data-language="14">Nederlands nl-NL</a></li>
+									<li><a role="button" data-language="15">polski pl-PL</a></li>
+									<li><a role="button" data-language="16">português do Brasil pt-BR</a></li>
+									<li><a role="button" data-language="17">русский ru-RU</a></li>
+									<li><a role="button" data-language="18">國語（臺灣） zh-TW</a></li>
+								</ul>
+							</div>
+						</td>
+					</div>
+				</tr>
+
+				<tr>
+					<td><b>Rate</b><br>Range 1-1000 (Default 110)</td>
+					<td>
+						<input type="text" class="form-control set_speak_rate" value={{speak_rate}}>
+					</td>
+				</tr>
+				<tr>
+					<td><b>Pitch</b><br>Range 0-200 (Default 100)</td>
+					<td>
+						<input type="text" class="form-control set_speak_pitch" value={{speak_pitch}}>
+					</td>
+				</tr>
+
+		 </table>
+		</div>
 	</div>
+
 </div>
+
 
 <!--Edit system tuning values-->
 <h4>Sensor Tuning</h4>
@@ -603,6 +582,12 @@
 					<td><b>Filter Ratio (Default 10)</b><br>RSSI Filtering (lower for smoother readings)</td>
 					<td>
 						<input type="text" class="form-control set_filter_ratio">
+					</td>
+				</tr>
+				<tr>
+					<td><b>Minimum Lap Time (Default 3)</b><br>Minimum lap time allowed (in seconds)</td>
+					<td>
+						<input type="text" class="form-control set_lap_min_time">
 					</td>
 				</tr>
 			</table>

@@ -36,6 +36,8 @@ RACE = get_race_state() # For storing race management variables
 PROGRAM_START = datetime.now()
 RACE_START = datetime.now() # Updated on race start commands
 
+g_lap_min_time_ms = 3000 # Minimum lap time in milliseconds
+
 #
 # Database Models
 #
@@ -103,6 +105,7 @@ class Profiles(DB.Model):
     c_threshold = DB.Column(DB.Integer, nullable=True)
     t_threshold = DB.Column(DB.Integer, nullable=True)
     f_ratio = DB.Column(DB.Integer, nullable=True)
+    lap_min = DB.Column(DB.Integer, nullable=True)
 
 class LastProfile(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
@@ -112,6 +115,14 @@ class LastProfile(DB.Model):
 class FixTimeRace(DB.Model):
     id = DB.Column(DB.Integer, primary_key=True)
     race_time_sec = DB.Column(DB.Integer, nullable=False)
+
+
+class GlobalSettings(DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True)
+    lang_id = DB.Column(DB.Integer, nullable=False)
+    speak_rate = DB.Column(DB.Integer, nullable=False)
+    speak_pitch = DB.Column(DB.Integer, nullable=False)
+
 
 #
 # Authentication
@@ -201,11 +212,14 @@ def heats():
 @requires_auth
 def race():
     '''Route to race management page.'''
+    global_settings = GlobalSettings.query.get(1)
     return render_template('race.html', num_nodes=RACE.num_nodes,
                            current_heat=RACE.current_heat,
                            heats=Heat, pilots=Pilot,
                            fix_race_time=FixTimeRace.query.get(1).race_time_sec,
-						   lang_id=RACE.lang_id,
+						   lang_id=global_settings.lang_id,
+						   speak_rate=global_settings.speak_rate,
+						   speak_pitch=global_settings.speak_pitch,
         frequencies=[node.frequency for node in INTERFACE.nodes],
         channels=[Frequency.query.filter_by(frequency=node.frequency).first().channel
             for node in INTERFACE.nodes])
@@ -214,7 +228,7 @@ def race():
 @requires_auth
 def settings():
     '''Route to settings page.'''
-
+    global_settings = GlobalSettings.query.get(1)
     return render_template('settings.html', num_nodes=RACE.num_nodes,
                            pilots=Pilot,
                            frequencies=Frequency,
@@ -222,7 +236,9 @@ def settings():
                            last_profile =  LastProfile,
                            profiles = Profiles,
                            current_fix_race_time=FixTimeRace.query.get(1).race_time_sec,
-						   lang_id=RACE.lang_id)
+						   lang_id=global_settings.lang_id,
+						   speak_rate=global_settings.speak_rate,
+						   speak_pitch=global_settings.speak_pitch)
 
 # Debug Routes
 
@@ -286,7 +302,25 @@ def on_chg_node_offs_adj(data):
 @SOCKET_IO.on('set_language')
 def on_set_language(data):
     '''Set language.'''
-    RACE.lang_id = data['language']
+    global_settings = GlobalSettings.query.get(1)
+    global_settings.lang_id = data['language']
+    DB.session.commit()
+    emit_language_data()
+
+@SOCKET_IO.on('set_speak_rate')
+def on_set_speak_rate(data):
+    '''Set speak rate.'''
+    global_settings = GlobalSettings.query.get(1)
+    global_settings.speak_rate = data['speak_rate']
+    DB.session.commit()
+    emit_language_data()
+
+@SOCKET_IO.on('set_speak_pitch')
+def on_set_speak_pitch(data):
+    '''Set speak pitch.'''
+    global_settings = GlobalSettings.query.get(1)
+    global_settings.speak_pitch = data['speak_pitch']
+    DB.session.commit()
     emit_language_data()
 
 
@@ -372,28 +406,31 @@ def on_add_profile():
                            c_offset=8,
                            c_threshold=90,
                            t_threshold=40,
-                           f_ratio=10))
+                           f_ratio=10,
+                           lap_min=3))
     DB.session.commit()
     on_set_profile(data={ 'profile': 'New Profile %s' % max_profile_id})
 
 @SOCKET_IO.on('delete_profile')
 def on_delete_profile():
     '''Delete profile'''
+    global g_lap_min_time_ms
     if (DB.session.query(Profiles).count() > 1): # keep one profile
-     last_profile = LastProfile.query.get(1).profile_id
-     profile = Profiles.query.get(last_profile)
-     DB.session.delete(profile)
-     DB.session.commit()
-     last_profile =  LastProfile.query.get(1)
-     first_profile_id = Profiles.query.first().id
-     last_profile.profile_id = first_profile_id
-     DB.session.commit()
-     profile =Profiles.query.get(first_profile_id)
-     INTERFACE.set_calibration_threshold_global(profile.c_threshold)
-     INTERFACE.set_calibration_offset_global(profile.c_offset)
-     INTERFACE.set_trigger_threshold_global(profile.t_threshold)
-     INTERFACE.set_filter_ratio_global(profile.f_ratio)
-     emit_node_tuning()
+        last_profile = LastProfile.query.get(1).profile_id
+        profile = Profiles.query.get(last_profile)
+        DB.session.delete(profile)
+        DB.session.commit()
+        last_profile =  LastProfile.query.get(1)
+        first_profile_id = Profiles.query.first().id
+        last_profile.profile_id = first_profile_id
+        DB.session.commit()
+        profile = Profiles.query.get(first_profile_id)
+        g_lap_min_time_ms = profile.lap_min * 1000
+        INTERFACE.set_calibration_threshold_global(profile.c_threshold)
+        INTERFACE.set_calibration_offset_global(profile.c_offset)
+        INTERFACE.set_trigger_threshold_global(profile.t_threshold)
+        INTERFACE.set_filter_ratio_global(profile.f_ratio)
+        emit_node_tuning()
 
 @SOCKET_IO.on('set_profile_name')
 def on_set_profile_name(data):
@@ -470,6 +507,19 @@ def on_set_filter_ratio(data):
     emit_node_tuning()
 
 
+@SOCKET_IO.on('set_lap_min_time')
+def on_set_lap_min_time(data):
+    '''Set Lap Min Time.'''
+    global g_lap_min_time_ms
+    lap_min_time = data['lap_min_time']
+    g_lap_min_time_ms = lap_min_time * 1000
+    last_profile = LastProfile.query.get(1)
+    profile = Profiles.query.filter_by(id=last_profile.profile_id).first()
+    profile.lap_min = lap_min_time
+    DB.session.commit()
+    server_log('Lap Min Time set: {0}'.format(lap_min_time))
+
+
 @SOCKET_IO.on('reset_database')
 def on_reset_database():
     '''Reset database.'''
@@ -490,12 +540,14 @@ def on_shutdown_pi():
 @SOCKET_IO.on("set_profile")
 def on_set_profile(data):
     ''' set current profile '''
+    global g_lap_min_time_ms
     profile_val = data['profile']
-    profile =Profiles.query.filter_by(name=profile_val).first()
+    profile = Profiles.query.filter_by(name=profile_val).first()
     DB.session.flush()
     last_profile = LastProfile.query.get(1)
     last_profile.profile_id = profile.id
     DB.session.commit()
+    g_lap_min_time_ms = profile.lap_min * 1000
     INTERFACE.set_calibration_threshold_global(profile.c_threshold)
     INTERFACE.set_calibration_offset_global(profile.c_offset)
     INTERFACE.set_trigger_threshold_global(profile.t_threshold)
@@ -639,7 +691,7 @@ def on_delete_lap(data):
         # Delete the false lap
         CurrentLap.query.filter_by(node_index=node_index, lap_id=lap_id).delete()
     DB.session.commit()
-    server_log('Lap deleted: Node {0} Lap {1}'.format(node_index, lap_id))
+    server_log('Lap deleted: Node {0} Lap {1}'.format(node_index+1, lap_id))
     emit_current_laps() # Race page, update web client
     emit_leaderboard() # Race page, update web client
 
@@ -647,7 +699,7 @@ def on_delete_lap(data):
 def on_simulate_lap(data):
     '''Simulates a lap (for debug testing).'''
     node_index = data['node']
-    server_log('Simulated lap: Node {0}'.format(node_index))
+    server_log('Simulated lap: Node {0}'.format(node_index+1))
     INTERFACE.intf_simulate_lap(node_index)
 
 # Socket io emit functions
@@ -678,6 +730,8 @@ def emit_node_tuning():
             tune_val.t_threshold,
         'filter_ratio': \
             tune_val.f_ratio,
+        'lap_min_time': \
+            tune_val.lap_min,
         'profile_name':
             tune_val.name,
         'profile_description':
@@ -812,8 +866,12 @@ def emit_phonetic_data(pilot_id, lap_id, lap_time):
     SOCKET_IO.emit('phonetic_data', {'pilot': phonetic_name, 'lap': lap_id, 'phonetic': phonetic_time})
 
 def emit_language_data():
-    '''Emits language.'''
-    SOCKET_IO.emit('language_data', {'language': RACE.lang_id})
+    '''Emits language and voice settings.'''
+    global_settings = GlobalSettings.query.get(1)
+    SOCKET_IO.emit('language_data', {
+        'language': global_settings.lang_id,
+        'speak_rate': global_settings.speak_rate,
+        'speak_pitch': global_settings.speak_pitch})
 
 def emit_current_fix_race_time():
     ''' Emit current fixed time race time '''
@@ -868,7 +926,7 @@ def phonetictime_format(millis):
 	
 def pass_record_callback(node, ms_since_lap):
     '''Handles pass records from the nodes.'''
-    server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index, ms_since_lap))
+    server_log('Raw pass record: Node: {0}, MS Since Lap: {1}'.format(node.index+1, ms_since_lap))
     emit_node_data() # For updated triggers and peaks
 
     if RACE.race_status is 1:
@@ -883,6 +941,7 @@ def pass_record_callback(node, ms_since_lap):
         last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
             .filter_by(node_index=node.index).scalar()
 
+        lap_id = -1
         if last_lap_id is None: # No previous laps, this is the first pass
             # Lap zero represents the time from the launch pad to flying through the gate
             lap_time = lap_time_stamp
@@ -893,20 +952,26 @@ def pass_record_callback(node, ms_since_lap):
                 node_index=node.index, lap_id=last_lap_id).first().lap_time_stamp
             # New lap time is the difference between the current time stamp and the last
             lap_time = lap_time_stamp - last_lap_time_stamp
-            lap_id = last_lap_id + 1
+            # if lap time >= minimum then count lap
+            if lap_time >= g_lap_min_time_ms:
+                lap_id = last_lap_id + 1
 
-        # Add the new lap to the database
-        DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
-            lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
-            lap_time_formatted=time_format(lap_time)))
-        DB.session.commit()
-
-        server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
-            .format(node.index, lap_id, time_format(lap_time)))
-        emit_current_laps() # Updates all laps on the race page
-        emit_leaderboard() # Updates leaderboard
-        if lap_id > 0: 
-            emit_phonetic_data(pilot_id, lap_id, lap_time) # Sends phonetic data to be spoken
+        if lap_id >= 0:
+            # Add the new lap to the database
+            DB.session.add(CurrentLap(node_index=node.index, pilot_id=pilot_id, lap_id=lap_id, \
+                lap_time_stamp=lap_time_stamp, lap_time=lap_time, \
+                lap_time_formatted=time_format(lap_time)))
+            DB.session.commit()
+    
+            server_log('Pass record: Node: {0}, Lap: {1}, Lap time: {2}' \
+                .format(node.index+1, lap_id, time_format(lap_time)))
+            emit_current_laps() # Updates all laps on the race page
+            emit_leaderboard() # Updates leaderboard
+            if lap_id > 0: 
+                emit_phonetic_data(pilot_id, lap_id, lap_time) # Sends phonetic data to be spoken
+        else:
+            server_log('Pass rejected (time too small): Node: {0}, LastLap: {1}, Lap time: {2}' \
+                .format(node.index+1, last_lap_id, time_format(lap_time)))
 
 INTERFACE.pass_record_callback = pass_record_callback
 
@@ -946,6 +1011,7 @@ def db_init():
     db_reset_profile()
     db_reset_default_profile()
     db_reset_fix_race_time()
+    db_reset_global_settings()
     server_log('Database initialized')
 
 def db_reset():
@@ -958,6 +1024,7 @@ def db_reset():
     db_reset_profile()
     db_reset_default_profile()
     db_reset_fix_race_time()
+    db_reset_global_settings()
     server_log('Database reset')
 
 def db_reset_keep_pilots():
@@ -967,6 +1034,7 @@ def db_reset_keep_pilots():
     db_reset_current_laps()
     db_reset_saved_races()
     db_reset_fix_race_time()
+    db_reset_global_settings()
     server_log('Database reset, pilots kept')
 
 def db_reset_pilots():
@@ -1072,19 +1140,22 @@ def db_reset_profile():
                              c_offset=8,
                              c_threshold=65,
                              t_threshold=40,
-                             f_ratio=10))
+                             f_ratio=10,
+                             lap_min=3))
     DB.session.add(Profiles(name="default 200mW",
                              description ="default tune params for 200mW race",
                              c_offset=8,
                              c_threshold=90,
                              t_threshold=40,
-                             f_ratio=10))
+                             f_ratio=10,
+                             lap_min=3))
     DB.session.add(Profiles(name="default 600mW",
                              description ="default tune params for 600mW race",
                              c_offset=8,
                              c_threshold=100,
                              t_threshold=40,
-                             f_ratio=10))
+                             f_ratio=10,
+                             lap_min=3))
     DB.session.commit()
     server_log("Database set default profiles for 25,200,600 mW races")
 
@@ -1100,6 +1171,14 @@ def db_reset_fix_race_time():
     DB.session.add(FixTimeRace(race_time_sec=120))
     DB.session.commit()
     server_log("Database set fixed time race to 120 sec (2 minutes)")
+
+
+def db_reset_global_settings():
+    DB.session.query(GlobalSettings).delete()
+    DB.session.add(GlobalSettings(lang_id = 2, speak_rate = 110, speak_pitch = 100))
+    DB.session.commit()
+    server_log("Database set default global settings")
+
 #
 # Program Initialize
 #
@@ -1116,6 +1195,22 @@ default_frequencies()
 # Create database if it doesn't exist
 if not os.path.exists('database.db'):
     db_init()
+else:
+    try:  # check if global_settings in DB can be read
+        gsettings = GlobalSettings.query.get(1)
+        try:
+            l_id = gsettings.lang_id,
+            s_rate = gsettings.speak_rate,
+            s_pitch = gsettings.speak_pitch,
+        except:
+            print 'Resetting global settings table (schema changed)'
+            GlobalSettings.__table__.drop(DB.engine)
+            GlobalSettings.__table__.create(DB.engine)
+            db_reset_global_settings()
+    except:
+        print 'Creating new global settings table'
+        GlobalSettings.__table__.create(DB.engine)
+        db_reset_global_settings()
 
 # Clear any current laps from the database on each program start
 # DB session commit needed to prevent 'application context' errors
@@ -1138,6 +1233,8 @@ INTERFACE.set_calibration_threshold_global(tune_val.c_threshold)
 INTERFACE.set_calibration_offset_global(tune_val.c_offset)
 INTERFACE.set_trigger_threshold_global(tune_val.t_threshold)
 INTERFACE.set_filter_ratio_global(tune_val.f_ratio)
+
+g_lap_min_time_ms = tune_val.lap_min * 1000
 
 
 # Test data - Current laps

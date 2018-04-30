@@ -1175,7 +1175,7 @@ def db_reset_fix_race_time():
 
 def db_reset_global_settings():
     DB.session.query(GlobalSettings).delete()
-    DB.session.add(GlobalSettings(lang_id = 2, speak_rate = 110, speak_pitch = 100))
+    DB.session.add(GlobalSettings(lang_id = 1, speak_rate = 110, speak_pitch = 100))
     DB.session.commit()
     server_log("Database set default global settings")
 

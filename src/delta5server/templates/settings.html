@@ -1,72 +1,29 @@
 {% extends "layout.html" %} {% block title %}Settings{% endblock %} {% block head %}
 <script type="text/javascript" charset="utf-8">
+	function setup_lang_dropdown() {
+		var itemsstr = '<li><a role="button" data-language="0">None</a></li>';
+		for (i=0; i<speakVoicesArr.length; ++i) {
+			itemsstr = itemsstr + '<li><a role="button" data-language="' + (i+1) + '">' + speakVoicesArr[i].name + ' ' + speakVoicesArr[i].language + '</a></li>';
+		}
+		$('.sel_lang_dropdown').html(itemsstr);
+	};
+
 	function voice_label(idlang) {
-		switch (idlang) {
-		case 1:
-			$('.sel_lang').html("US English en-US");
-			break;		
-		case 2:
-			$('.sel_lang').html("Anna - English (United States) en-US");
-			break;
-		case 3:
-			$('.sel_lang').html("UK English Female en-GB");
-			break;		
-		case 4:
-			$('.sel_lang').html("UK English Male en-GB");
-			break;		
-		case 5:
-			$('.sel_lang').html("Deutsch de-DE");
-			break;		
-		case 6:
-			$('.sel_lang').html("español es-ES");
-			break;		
-		case 7:
-			$('.sel_lang').html("español de Estados Unidos es-US");
-			break;		
-		case 8:
-			$('.sel_lang').html("français fr-FR");
-			break;		
-		case 9:
-			$('.sel_lang').html("हिन्दी hi-IN");
-			break;		
-		case 10:
-			$('.sel_lang').html("Bahasa Indonesia id-ID");
-			break;		
-		case 11:
-			$('.sel_lang').html("italiano it-IT");
-			break;		
-		case 12:
-			$('.sel_lang').html("日本語 ja-JP");
-			break;		
-		case 13:
-			$('.sel_lang').html("한국의 ko-KR");
-			break;		
-		case 14:
-			$('.sel_lang').html("Nederlands nl-NL");
-			break;		
-		case 15:
-			$('.sel_lang').html("polski pl-PL");
-			break;		
-		case 16:
-			$('.sel_lang').html("português do Brasil pt-BR");
-			break;		
-		case 17:
-			$('.sel_lang').html("русский ru-RU");
-			break;		
-		case 18:
-			$('.sel_lang').html("國語（臺灣） zh-TW");
-			break;		
-		default:
+		if (idlang > 0 && idlang <= speakVoicesArr.length) {
+			$('.sel_lang').html(speakVoicesArr[idlang-1].name + ' ' + speakVoicesArr[idlang-1].language);
+		}
+		else {
 			$('.sel_lang').html("None");
-			break;
-		}		
-	}
+		}
+	};
 	
 	$(document).ready(function () {
 		var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
+		setup_lang_dropdown();
+
 		voice_label( {{ lang_id }} );
-		
+
 		var heatbeatCounter = 0;
 
 		socket.on('heartbeat', function (msg) {
@@ -487,25 +444,7 @@
 								<button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true"
 								 aria-expanded="true"><span class="sel_lang"></span></button>
 								<ul class="dropdown-menu set_language">
-									<li><a role="button" data-language="0">None</a></li>
-									<li><a role="button" data-language="1">US English en-US</a></li>
-									<li><a role="button" data-language="2">Anna - English (United States) en-US</a></li>
-									<li><a role="button" data-language="3">UK English Female en-GB</a></li>
-									<li><a role="button" data-language="4">UK English Male en-GB</a></li>
-									<li><a role="button" data-language="5">Deutsch de-DE</a></li>
-									<li><a role="button" data-language="6">español es-ES</a></li>
-									<li><a role="button" data-language="7">español de Estados Unidos es-US</a></li>
-									<li><a role="button" data-language="8">français fr-FR</a></li>
-									<li><a role="button" data-language="9">हिन्दी hi-IN</a></li>
-									<li><a role="button" data-language="10">Bahasa Indonesia id-ID</a></li>
-									<li><a role="button" data-language="11">italiano it-IT</a></li>
-									<li><a role="button" data-language="12">日本語 ja-JP</a></li>
-									<li><a role="button" data-language="13">한국의 ko-KR</a></li>
-									<li><a role="button" data-language="14">Nederlands nl-NL</a></li>
-									<li><a role="button" data-language="15">polski pl-PL</a></li>
-									<li><a role="button" data-language="16">português do Brasil pt-BR</a></li>
-									<li><a role="button" data-language="17">русский ru-RU</a></li>
-									<li><a role="button" data-language="18">國語（臺灣） zh-TW</a></li>
+									<div class="sel_lang_dropdown"></div>
 								</ul>
 							</div>
 						</td>

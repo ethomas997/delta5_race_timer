@@ -22,63 +22,12 @@
 		var sellang = {{ lang_id }};
 		var speakRate = {{ speak_rate }} / 100.0;
 		var speakPitch = {{ speak_pitch }} / 100.0;
+
+		var speakVoicesArr = $().articulate('getVoices');
 	
 		function doSpeak(obj) {
-			switch (sellang) {
-				case 1:
-					$(obj).articulate('setVoice','name','Google US English').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 2:
-					$(obj).articulate('setVoice','name','Microsoft Anna - English (United States)').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 3:
-					$(obj).articulate('setVoice','name','Google UK English Female').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 4:
-					$(obj).articulate('setVoice','name','Google UK English Male').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 5:
-					$(obj).articulate('setVoice','name','Google Deutsch').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;			
-				case 6:
-					$(obj).articulate('setVoice','name','Google español').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 7:
-					$(obj).articulate('setVoice','name','Google español de Estados Unidos').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 8:
-					$(obj).articulate('setVoice','name','Google français').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 9:
-					$(obj).articulate('setVoice','name','Google ??????').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 10:
-					$(obj).articulate('setVoice','name','Google Bahasa Indonesia').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 11:
-					$(obj).articulate('setVoice','name','Google italiano').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 12:
-					$(obj).articulate('setVoice','name','Google ???').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 13:
-					$(obj).articulate('setVoice','name','Google ???').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 14:
-					$(obj).articulate('setVoice','name','Google Nederlands').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 15:
-					$(obj).articulate('setVoice','name','Google polski').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 16:
-					$(obj).articulate('setVoice','name','Google português do Brasil').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 17:
-					$(obj).articulate('setVoice','name','Google ???????').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
-				case 18:
-					$(obj).articulate('setVoice','name','Google ??(??)').articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
-					break;
+			if (sellang > 0 && sellang <= speakVoicesArr.length) {
+				$(obj).articulate('setVoice','name',speakVoicesArr[sellang-1].name).articulate('rate', speakRate).articulate('pitch', speakPitch).articulate('speak');
 			}
 		};
 

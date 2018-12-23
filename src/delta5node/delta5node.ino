@@ -36,7 +36,7 @@
 #define i2cSlaveAddress (6 + (NODE_NUMBER * 2))
 
 // API level for read/write commands; increment when commands are modified
-#define NODE_API_LEVEL 5
+#define NODE_API_LEVEL 6
 
 const int slaveSelectPin = 10; // Setup data pins for rx5808 comms
 const int spiDataPin = 11;
@@ -59,6 +59,7 @@ const int spiClockPin = 13;
 #define WRITE_CALIBRATION_OFFSET 0x67
 #define WRITE_TRIGGER_THRESHOLD 0x68
 #define WRITE_FILTER_RATIO 0x69
+#define MARK_START_TIME 0x77  // mark base time for returned lap-ms-since-start values
 
 #define FILTER_RATIO_DIVIDER 10000.0f
 
@@ -101,6 +102,8 @@ struct {
 	uint16_t volatile nodeRssiPeak = 0;
     // Set true after initial WRITE_FREQUENCY command received
 	bool volatile rxFreqSetFlag = false;
+	// base time for returned lap-ms-since-start values
+	uint32_t volatile raceStartTimeStamp = 0;
 
 	// variables to track the loop time
 	uint32_t volatile loopTime = 0;
@@ -503,6 +506,12 @@ byte i2cHandleRx(byte command) { // The first byte sent by the I2C master is the
 				success = true;
 			}
 			break;
+		case MARK_START_TIME:  // mark base time for returned lap-ms-since-start values
+			state.raceStartTimeStamp = millis();
+			if (readAndValidateIoBuffer(MARK_START_TIME, 1)) {
+				success = true;
+			}
+			break;
 	}
 
 	ioCommand = 0; // Clear previous command
@@ -537,6 +546,7 @@ void i2cTransmit() {
 			ioBufferWrite16(lastPass.rssiPeak);
 			ioBufferWrite32(state.loopTime);
 			ioBufferWrite8(state.crossing ? (uint8_t)1 : (uint8_t)0);  // as of API 5 return 'crossing' status
+			ioBufferWrite32(lastPass.timeStamp - state.raceStartTimeStamp);  // as of API 6 return lap ms-since-start
 			break;
 		case READ_CALIBRATION_THRESHOLD:
                    // no longer using this; but keep cmd for backward compatibility

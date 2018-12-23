@@ -24,6 +24,7 @@ WRITE_CALIBRATION_MODE = 0x66
 WRITE_CALIBRATION_OFFSET = 0x67
 WRITE_TRIGGER_THRESHOLD = 0x68
 WRITE_FILTER_RATIO = 0x69
+MARK_START_TIME = 0x77  # mark base time for returned lap-ms-since-start values
 
 UPDATE_SLEEP = 0.1 # Main update loop delay
 
@@ -104,6 +105,8 @@ class Delta5Interface(BaseHardwareInterface):
             if node.api_level >= 5:
                 node.api_lvl5_flag = True  # set flag for API level 5 functions supported
                 node.node_peak_rssi = self.get_value_16(node, READ_NODE_RSSI_PEAK)
+                if node.api_level >= 6:
+                    node.api_lvl6_flag = True  # set flag for API level 6 functions supported
                 print "Node {0}: API_level={1}, node_peak={2}, freq={3}".format(node.index+1, node.api_level, node.node_peak_rssi, node.frequency)
             else:
                 print "Node {0}: API_level=0".format(node.index+1)
@@ -149,7 +152,9 @@ class Delta5Interface(BaseHardwareInterface):
 
     def update(self):
         for node in self.nodes:
-            if node.api_lvl5_flag:
+            if node.api_lvl6_flag:
+                data = self.read_block(node.i2c_addr, READ_LAP_STATS, 22)
+            elif node.api_lvl5_flag:
                 data = self.read_block(node.i2c_addr, READ_LAP_STATS, 18)
             else:
                 data = self.read_block(node.i2c_addr, READ_LAP_STATS, 17)
@@ -167,6 +172,8 @@ class Delta5Interface(BaseHardwareInterface):
                          node.crossing_flag = True
                      else:
                          node.crossing_flag = False
+                if node.api_lvl6_flag:  # if supported then load lap ms-since-start
+                    node.lap_ms_since_start = unpack_32(data[18:])
 
                 if lap_id != node.last_lap_id:
                     if node.last_lap_id != -1 and callable(self.pass_record_callback):
@@ -282,6 +289,18 @@ class Delta5Interface(BaseHardwareInterface):
             out_value = in_value
         return out_value
 
+    def set_value_8(self, node, write_command, in_value):
+        success = False
+        retry_count = 0
+        out_value = None
+        while success is False and retry_count < I2C_RETRY_COUNT:
+            if self.write_block(node.i2c_addr, write_command, pack_8(in_value)):
+                success = True
+            else:
+                retry_count = retry_count + 1
+                self.log('Value Not Set ({0}): {1}/{2}/{3}'.format(retry_count, write_command, in_value, node))
+        return success
+
     #
     # External functions for setting data
     #
@@ -390,6 +409,15 @@ class Delta5Interface(BaseHardwareInterface):
         for node in self.nodes:
             self.set_filter_ratio(node.index, filter_ratio)
         return self.filter_ratio
+
+    def mark_start_time(self, node_index):
+        node = self.nodes[node_index]
+        if node.api_lvl6_flag:
+            self.set_value_8(node, MARK_START_TIME, 0)
+
+    def mark_start_time_global(self):
+        for node in self.nodes:
+            self.mark_start_time(node.index)
 
     def intf_simulate_lap(self, node_index):
         node = self.nodes[node_index]

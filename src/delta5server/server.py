@@ -820,6 +820,7 @@ def on_start_race(data):
     RACE.race_status = 1 # To enable registering passed laps
     global RACE_START # To redefine main program variable
     RACE_START = datetime.now() # Update the race start time stamp
+    INTERFACE.mark_start_time_global()
     onoff(strip, Color(0,255,0)) #GREEN for GO
     emit_race_status() # Race page, to set race button states
     emit_node_data() # Settings page, node channel and triggers on the launch pads
@@ -1319,8 +1320,13 @@ def pass_record_callback(node, ms_since_lap):
                 heat_id=RACE.current_heat, node_index=node.index).first().pilot_id
 
             if pilot_id != 1:
-                # Calculate the lap time stamp, milliseconds since start of race
-                lap_time_stamp = ms_from_race_start() - ms_since_lap
+                
+                if node.lap_ms_since_start < 0:
+                    # Calculate the lap time stamp, milliseconds since start of race
+                    lap_time_stamp = ms_from_race_start() - ms_since_lap
+                else:
+                    lap_time_stamp = node.lap_ms_since_start
+                    server_log('DEBUG:  Node {0} lap {1} oldMS={2} newMS={3}'.format(node.index+1, node.last_lap_id+1, (ms_from_race_start() - ms_since_lap), lap_time_stamp))
 
                 # Get the last completed lap from the database
                 last_lap_id = DB.session.query(DB.func.max(CurrentLap.lap_id)) \
